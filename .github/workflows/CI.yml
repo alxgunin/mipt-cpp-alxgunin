@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        
+      - name: Install Clang
+        uses: egor-tensin/setup-clang@v1
+
+      - name: clang-format
+        run: |
+          for file in `find . -name '*.h'`
+          do
+            echo 'clang-format checking...' && diff $file <(clang-format $file)
+          done
+
+      - name: Build tests
+        run: |
+          mkdir -p build && rm -rf build/*
+          cd build
+          CXX=clang++ CC=clang cmake ../tasks/
+          cmake --build .
+          
+      - name: Run tests
+        run: |
+          cd build
+          ./deque
+          ./list
