@@ -71,8 +71,8 @@ class Deque {
     using difference_type = std::ptrdiff_t;
 
     common_iterator() = default;
-    common_iterator(ssize_t pos_, T** pt)
-        : pos_(pos_),
+    common_iterator(ssize_t pos, T** pt)
+        : pos_(pos),
           it_chain_(pt) {
     }
 
