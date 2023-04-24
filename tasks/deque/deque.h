@@ -9,29 +9,29 @@
 template <typename T>
 class Deque {
  private:
-  static const size_t BUCKET_SIZE = 32;
+  static const size_t bucket_size = 32;
   size_t size_ = 0;
-  size_t chain_size = 0;
-  ssize_t first_index = -1;
-  T** chain = nullptr;
+  size_t chain_size_ = 0;
+  ssize_t first_index_ = -1;
+  T** chain_ = nullptr;
 
   static size_t get_num(ssize_t index) {
-    return index / BUCKET_SIZE;
+    return index / bucket_size;
   }
   static size_t get_pos(ssize_t index) {
-    return index % BUCKET_SIZE;
+    return index % bucket_size;
   }
   void delete_buckets() {
-    for (size_t i = 0; i < chain_size; ++i) {
-      delete[] reinterpret_cast<char*>(chain[i]);
+    for (size_t i = 0; i < chain_size_; ++i) {
+      delete[] reinterpret_cast<char*>(chain_[i]);
     }
   }
   void set_default() {
     delete_buckets();
-    delete[] chain;
+    delete[] chain_;
     size_ = 0;
-    chain_size = 0;
-    first_index = -1;
+    chain_size_ = 0;
+    first_index_ = -1;
   }
 
  public:
@@ -60,8 +60,8 @@ class Deque {
   template <bool is_const>
   class common_iterator {
    private:
-    ssize_t pos = -1;
-    T** it_chain = nullptr;
+    ssize_t pos_ = -1;
+    T** it_chain_ = nullptr;
 
    public:
     using pointer = typename std::conditional<is_const, const T*, T*>::type;
@@ -71,9 +71,9 @@ class Deque {
     using difference_type = std::ptrdiff_t;
 
     common_iterator() = default;
-    common_iterator(ssize_t pos, T** pt)
-        : pos(pos),
-          it_chain(pt) {
+    common_iterator(ssize_t pos_, T** pt)
+        : pos_(pos_),
+          it_chain_(pt) {
     }
 
     common_iterator& operator++();
@@ -99,7 +99,7 @@ class Deque {
     }
 
     bool operator<(const common_iterator& another) const {
-      return pos < another.pos;
+      return pos_ < another.pos_;
     }
     bool operator<=(const common_iterator& another) const {
       return !(another < *this);
@@ -111,26 +111,26 @@ class Deque {
       return !(*this < another);
     }
     bool operator==(const common_iterator& another) const {
-      return pos == another.pos;
+      return pos_ == another.pos_;
     }
     bool operator!=(const common_iterator& another) const {
       return !(*this == another);
     }
 
     difference_type operator-(const common_iterator& b) const {
-      return pos - b.pos;
+      return pos_ - b.pos_;
     }
 
     reference operator*() const {
-      return *(it_chain[get_num(pos)] + get_pos(pos));
+      return *(it_chain_[get_num(pos_)] + get_pos(pos_));
     }
 
     pointer operator->() const {
-      return (it_chain[get_num(pos)] + get_pos(pos));
+      return (it_chain_[get_num(pos_)] + get_pos(pos_));
     }
 
     operator common_iterator<true>() const {
-      return common_iterator<true>(pos, it_chain);
+      return common_iterator<true>(pos_, it_chain_);
     }
   };
 
@@ -143,24 +143,24 @@ class Deque {
   void erase(iterator it);
 
   iterator begin() {
-    return iterator(first_index, chain);
+    return iterator(first_index_, chain_);
   }
   const_iterator begin() const {
-    return const_iterator(first_index, chain);
+    return const_iterator(first_index_, chain_);
   }
 
   iterator end() {
-    return iterator(first_index, chain) + size_;
+    return iterator(first_index_, chain_) + size_;
   }
   const_iterator end() const {
-    return const_iterator(first_index, chain) + size_;
+    return const_iterator(first_index_, chain_) + size_;
   }
 
   const_iterator cbegin() const {
-    return const_iterator(first_index, chain);
+    return const_iterator(first_index_, chain_);
   }
   const_iterator cend() const {
-    return const_iterator(first_index, chain) + size_;
+    return const_iterator(first_index_, chain_) + size_;
   }
 
   reverse_iterator rbegin() {
@@ -185,51 +185,51 @@ class Deque {
   }
 
   ~Deque() {
-    for (size_t i = first_index; i < first_index + size_; ++i) {
+    for (size_t i = first_index_; i < first_index_ + size_; ++i) {
       size_t row = get_num(i), index = get_pos(i);
-      (chain[row] + index)->~T();
+      (chain_[row] + index)->~T();
     }
     delete_buckets();
-    delete[] chain;
+    delete[] chain_;
   }
 };
 
 template <typename T>
 void Deque<T>::swap(Deque<T>& another) {
   std::swap(size_, another.size_);
-  std::swap(first_index, another.first_index);
-  std::swap(chain_size, another.chain_size);
-  std::swap(chain, another.chain);
+  std::swap(first_index_, another.first_index_);
+  std::swap(chain_size_, another.chain_size_);
+  std::swap(chain_, another.chain_);
 }
 
 template <typename T>
 Deque<T>::Deque(const Deque<T>& another)
     : size_(another.size_),
-      chain_size(another.chain_size),
-      first_index(another.first_index),
-      chain(new T*[chain_size]) {
+      chain_size_(another.chain_size_),
+      first_index_(another.first_index_),
+      chain_(new T*[chain_size_]) {
   size_t i = 0;
   try {
-    for (; i < chain_size; ++i) {
-      chain[i] = reinterpret_cast<T*>(new char[BUCKET_SIZE * sizeof(T)]);
+    for (; i < chain_size_; ++i) {
+      chain_[i] = reinterpret_cast<T*>(new char[bucket_size * sizeof(T)]);
     }
   } catch (...) {
     for (size_t j = 0; j < i; ++j) {
-      delete[] chain[j];
+      delete[] chain_[j];
     }
-    delete[] chain;
+    delete[] chain_;
     throw;
   }
-  i = first_index;
+  i = first_index_;
   try {
-    for (; i < first_index + size_; ++i) {
+    for (; i < first_index_ + size_; ++i) {
       size_t row = get_num(i), index = get_pos(i);
-      new (chain[row] + index) T(another.chain[row][index]);
+      new (chain_[row] + index) T(another.chain_[row][index]);
     }
   } catch (...) {
-    for (size_t j = first_index; j < i; ++j) {
+    for (size_t j = first_index_; j < i; ++j) {
       size_t row = get_num(i), index = get_pos(i);
-      (chain[row] + index)->~T();
+      (chain_[row] + index)->~T();
     }
     set_default();
     throw;
@@ -239,32 +239,32 @@ Deque<T>::Deque(const Deque<T>& another)
 template <typename T>
 Deque<T>::Deque(size_t size)
     : size_(size),
-      chain_size((size / BUCKET_SIZE) + 1),
-      first_index(0),
-      chain(new T*[chain_size]) {
+      chain_size_((size / bucket_size) + 1),
+      first_index_(0),
+      chain_(new T*[chain_size_]) {
   size_t i = 0;
   try {
-    for (; i < chain_size; ++i) {
-      chain[i] =
-          reinterpret_cast<T*>(new char[BUCKET_SIZE * sizeof(T)]);  // ASK
+    for (; i < chain_size_; ++i) {
+      chain_[i] =
+          reinterpret_cast<T*>(new char[bucket_size * sizeof(T)]);  // ASK
     }
   } catch (...) {
     for (size_t j = 0; j < i; ++j) {
-      delete[] chain[j];
+      delete[] chain_[j];
     }
-    delete[] chain;
+    delete[] chain_;
     throw;
   }
-  i = first_index;
+  i = first_index_;
   try {
-    for (; i < first_index + size_; ++i) {
+    for (; i < first_index_ + size_; ++i) {
       size_t row = get_num(i), index = get_pos(i);
-      new (chain[row] + index) T();
+      new (chain_[row] + index) T();
     }
   } catch (...) {
-    for (size_t j = first_index; j < i; ++j) {
+    for (size_t j = first_index_; j < i; ++j) {
       size_t row = get_num(i), index = get_pos(i);
-      (chain[row] + index)->~T();
+      (chain_[row] + index)->~T();
     }
     set_default();
     throw;
@@ -274,32 +274,32 @@ Deque<T>::Deque(size_t size)
 template <typename T>
 Deque<T>::Deque(size_t size, const T& value)
     : size_(size),
-      chain_size((size / BUCKET_SIZE) + 1),
-      first_index(0),
-      chain(new T*[chain_size]) {
+      chain_size_((size / bucket_size) + 1),
+      first_index_(0),
+      chain_(new T*[chain_size_]) {
   size_t i = 0;
   try {
-    for (; i < chain_size; ++i) {
-      chain[i] =
-          reinterpret_cast<T*>(new char[BUCKET_SIZE * sizeof(T)]);  // ASK
+    for (; i < chain_size_; ++i) {
+      chain_[i] =
+          reinterpret_cast<T*>(new char[bucket_size * sizeof(T)]);  // ASK
     }
   } catch (...) {
     for (size_t j = 0; j < i; ++j) {
-      delete[] chain[j];
+      delete[] chain_[j];
     }
-    delete[] chain;
+    delete[] chain_;
     throw;
   }
-  i = first_index;
+  i = first_index_;
   try {
-    for (; i < first_index + size_; ++i) {
+    for (; i < first_index_ + size_; ++i) {
       size_t row = get_num(i), index = get_pos(i);
-      new (chain[row] + index) T(value);
+      new (chain_[row] + index) T(value);
     }
   } catch (...) {
-    for (size_t j = first_index; j < i; ++j) {
+    for (size_t j = first_index_; j < i; ++j) {
       size_t row = get_num(i), index = get_pos(i);
-      (chain[row] + index)->~T();
+      (chain_[row] + index)->~T();
     }
     set_default();
     throw;
@@ -314,12 +314,12 @@ Deque<T>& Deque<T>::operator=(Deque<T> another) {
 
 template <typename T>
 T& Deque<T>::operator[](size_t index) {
-  return chain[get_num(first_index + index)][get_pos(first_index + index)];
+  return chain_[get_num(first_index_ + index)][get_pos(first_index_ + index)];
 }
 
 template <typename T>
 const T& Deque<T>::operator[](size_t index) const {
-  return chain[get_num(first_index + index)][get_pos(first_index + index)];
+  return chain_[get_num(first_index_ + index)][get_pos(first_index_ + index)];
 }
 
 template <typename T>
@@ -343,7 +343,7 @@ void Deque<T>::push_back(const T& value) {
   if (size_ == 0) {
     T** newchain = new T*[1];
     try {
-      newchain[0] = reinterpret_cast<T*>(new char[BUCKET_SIZE * sizeof(T)]);
+      newchain[0] = reinterpret_cast<T*>(new char[bucket_size * sizeof(T)]);
     } catch (...) {
       delete[] newchain;
       throw;
@@ -355,18 +355,18 @@ void Deque<T>::push_back(const T& value) {
       delete[] newchain;
       throw;
     }
-    chain = newchain;
+    chain_ = newchain;
     size_ = 1;
-    first_index = 0;
-    chain_size = 1;
+    first_index_ = 0;
+    chain_size_ = 1;
     return;
   }
-  if (first_index + size_ == chain_size * BUCKET_SIZE) {
-    T** newchain = new T*[chain_size * 2];
+  if (first_index_ + size_ == chain_size_ * bucket_size) {
+    T** newchain = new T*[chain_size_ * 2];
     size_t i = 0;
     try {
-      for (; i < chain_size * 2; ++i) {
-        newchain[i] = reinterpret_cast<T*>(new char[BUCKET_SIZE * sizeof(T)]);
+      for (; i < chain_size_ * 2; ++i) {
+        newchain[i] = reinterpret_cast<T*>(new char[bucket_size * sizeof(T)]);
       }
     } catch (...) {
       for (size_t j = 0; j < i; ++j) {
@@ -375,23 +375,23 @@ void Deque<T>::push_back(const T& value) {
       delete[] newchain;
       throw;
     }
-    for (size_t j = 0; j < chain_size; ++j) {
-      newchain[j] = chain[j];
+    for (size_t j = 0; j < chain_size_; ++j) {
+      newchain[j] = chain_[j];
     }
     try {
-      new (newchain[get_num(first_index + size_)] +
-           get_pos(first_index + size_)) T(value);
+      new (newchain[get_num(first_index_ + size_)] +
+           get_pos(first_index_ + size_)) T(value);
     } catch (...) {
       delete[] newchain;
       throw;
     }
     ++size_;
-    delete[] chain;
-    chain = newchain;
-    chain_size *= 2;
+    delete[] chain_;
+    chain_ = newchain;
+    chain_size_ *= 2;
     return;
   }
-  new (chain[get_num(first_index + size_)] + get_pos(first_index + size_))
+  new (chain_[get_num(first_index_ + size_)] + get_pos(first_index_ + size_))
       T(value);
   ++size_;
 }
@@ -399,9 +399,9 @@ void Deque<T>::push_back(const T& value) {
 template <typename T>
 void Deque<T>::pop_back() {
   size_--;
-  (chain[get_num(first_index + size_)] + get_pos(first_index + size_))->~T();
+  (chain_[get_num(first_index_ + size_)] + get_pos(first_index_ + size_))->~T();
   if (size_ == 0) {
-    first_index = -1;
+    first_index_ = -1;
   }
 }
 
@@ -410,7 +410,7 @@ void Deque<T>::push_front(const T& value) {
   if (size_ == 0) {
     T** newchain = new T*[1];
     try {
-      newchain[0] = reinterpret_cast<T*>(new char[BUCKET_SIZE * sizeof(T)]);
+      newchain[0] = reinterpret_cast<T*>(new char[bucket_size * sizeof(T)]);
     } catch (...) {
       delete[] newchain;
       throw;
@@ -422,18 +422,18 @@ void Deque<T>::push_front(const T& value) {
       delete[] newchain;
       throw;
     }
-    chain = newchain;
+    chain_ = newchain;
     size_ = 1;
-    first_index = 0;
-    chain_size = 1;
+    first_index_ = 0;
+    chain_size_ = 1;
     return;
   }
-  if (first_index == 0) {
-    T** newchain = new T*[chain_size * 2];
+  if (first_index_ == 0) {
+    T** newchain = new T*[chain_size_ * 2];
     size_t i = 0;
     try {
-      for (; i < chain_size * 2; ++i) {
-        newchain[i] = reinterpret_cast<T*>(new char[BUCKET_SIZE * sizeof(T)]);
+      for (; i < chain_size_ * 2; ++i) {
+        newchain[i] = reinterpret_cast<T*>(new char[bucket_size * sizeof(T)]);
       }
     } catch (...) {
       for (size_t j = 0; j < i; ++j) {
@@ -442,34 +442,34 @@ void Deque<T>::push_front(const T& value) {
       delete[] newchain;
       throw;
     }
-    for (size_t j = 0; j < chain_size; ++j) {
-      newchain[j + chain_size] = chain[j];
+    for (size_t j = 0; j < chain_size_; ++j) {
+      newchain[j + chain_size_] = chain_[j];
     }
     try {
-      new (newchain[chain_size - 1] + BUCKET_SIZE - 1) T(value);
+      new (newchain[chain_size_ - 1] + bucket_size - 1) T(value);
     } catch (...) {
       delete[] newchain;
       throw;
     }
     ++size_;
-    delete[] chain;
-    chain = newchain;
-    first_index = chain_size * BUCKET_SIZE - 1;
-    chain_size *= 2;
+    delete[] chain_;
+    chain_ = newchain;
+    first_index_ = chain_size_ * bucket_size - 1;
+    chain_size_ *= 2;
     return;
   }
-  --first_index;
-  new (chain[get_num(first_index)] + get_pos(first_index)) T(value);
+  --first_index_;
+  new (chain_[get_num(first_index_)] + get_pos(first_index_)) T(value);
   ++size_;
 }
 
 template <typename T>
 void Deque<T>::pop_front() {
   size_--;
-  (chain[get_num(first_index)] + get_pos(first_index))->~T();
-  first_index++;
+  (chain_[get_num(first_index_)] + get_pos(first_index_))->~T();
+  first_index_++;
   if (size_ == 0) {
-    first_index = -1;
+    first_index_ = -1;
   }
 }
 
@@ -477,7 +477,7 @@ template <typename T>
 template <bool is_const>
 typename Deque<T>::template common_iterator<is_const>&
 Deque<T>::common_iterator<is_const>::operator++() {
-  ++pos;
+  ++pos_;
   return *this;
 }
 
@@ -486,7 +486,7 @@ template <bool is_const>
 typename Deque<T>::template common_iterator<is_const>
 Deque<T>::common_iterator<is_const>::operator++(int) {
   Deque::common_iterator copy = *this;
-  ++pos;
+  ++pos_;
   return copy;
 }
 
@@ -494,7 +494,7 @@ template <typename T>
 template <bool is_const>
 typename Deque<T>::template common_iterator<is_const>&
 Deque<T>::common_iterator<is_const>::operator--() {
-  --pos;
+  --pos_;
   return *this;
 }
 
@@ -503,7 +503,7 @@ template <bool is_const>
 typename Deque<T>::template common_iterator<is_const>
 Deque<T>::common_iterator<is_const>::operator--(int) {
   Deque::common_iterator copy = *this;
-  --pos;
+  --pos_;
   return copy;
 }
 
@@ -511,7 +511,7 @@ template <typename T>
 template <bool is_const>
 typename Deque<T>::template common_iterator<is_const>&
 Deque<T>::common_iterator<is_const>::operator+=(difference_type delta) {
-  pos += delta;
+  pos_ += delta;
   return *this;
 }
 
@@ -527,7 +527,7 @@ template <typename T>
 template <bool is_const>
 typename Deque<T>::template common_iterator<is_const>&
 Deque<T>::common_iterator<is_const>::operator-=(difference_type delta) {
-  pos -= delta;
+  pos_ -= delta;
   return *this;
 }
 
