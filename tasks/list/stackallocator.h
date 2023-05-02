@@ -178,7 +178,8 @@ class List {
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   void insert(const_iterator it) {
-    Node* new_node = std::allocator_traits<node_alloc_>::allocate(node_alloc_, 1);
+    Node* new_node =
+        std::allocator_traits<node_alloc_>::allocate(node_alloc_, 1);
     try {
       std::allocator_traits<node_alloc_>::construct(node_alloc_, new_node);
     } catch (...) {
@@ -199,9 +200,11 @@ class List {
   }
 
   void insert(const_iterator it, const T& value) {
-    Node* new_node = std::allocator_traits<node_alloc_>::allocate(node_alloc_, 1);
+    Node* new_node =
+        std::allocator_traits<node_alloc_>::allocate(node_alloc_, 1);
     try {
-      std::allocator_traits<node_alloc_>::construct(node_alloc_, new_node, value);
+      std::allocator_traits<node_alloc_>::construct(node_alloc_, new_node,
+                                                    value);
     } catch (...) {
       std::allocator_traits<node_alloc_>::deallocate(node_alloc_, new_node, 1);
       throw;
@@ -346,7 +349,8 @@ class List {
     std::swap(other.size_, size_);
     std::swap(node_alloc_, other.node_alloc_);
     fake_node_.next->prev = fake_node_.prev->next = &fake_node_;
-    other.fake_node_.next->prev = other.fake_node_.prev->next = &other.fake_node_;
+    other.fake_node_.next->prev = other.fake_node_.prev->next =
+        &other.fake_node_;
   }
 
   List& operator=(const List& other) {
