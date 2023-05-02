@@ -103,18 +103,18 @@ class List {
     Node(const Node& other) = default;
   };
 
-  using node_alloc_ = typename AllocTraits::template rebind_alloc<Node>;
-  [[no_unique_address]] node_alloc_ node_alloc_;
-  BaseNode fake_node_ = BaseNode(&fake_node_, &fake_node_);
+  using NodeAlloc = typename AllocTraits::template rebind_alloc<Node>;
+  [[no_unique_address]] NodeAlloc nodeAlloc;
+  BaseNode fakeNode = BaseNode(&fakeNode, &fakeNode);
 
  public:
   Alloc get_allocator() const {
-    return static_cast<Alloc>(node_alloc_);
+    return static_cast<Alloc>(nodeAlloc);
   }
 
   List(Alloc alloc = Alloc())
       : size_(0),
-        node_alloc_(alloc) {
+        nodeAlloc(alloc) {
   }
 
   size_t size() const {
@@ -178,46 +178,43 @@ class List {
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   void insert(const_iterator it) {
-    Node* new_node =
-        std::allocator_traits<node_alloc_>::allocate(node_alloc_, 1);
+    Node* newNode = std::allocator_traits<NodeAlloc>::allocate(nodeAlloc, 1);
     try {
-      std::allocator_traits<node_alloc_>::construct(node_alloc_, new_node);
+      std::allocator_traits<NodeAlloc>::construct(nodeAlloc, newNode);
     } catch (...) {
-      std::allocator_traits<node_alloc_>::deallocate(node_alloc_, new_node, 1);
+      std::allocator_traits<NodeAlloc>::deallocate(nodeAlloc, newNode, 1);
       throw;
     }
-    new_node->next = it.node;
-    new_node->prev = it.node->prev;
+    newNode->next = it.node;
+    newNode->prev = it.node->prev;
     const_iterator prev_it = (--it);
     ++it;
-    it.node->prev = new_node;
+    it.node->prev = newNode;
     if (size_ == 0) {
-      it.node->next = new_node;
+      it.node->next = newNode;
     } else {
-      prev_it.node->next = new_node;
+      prev_it.node->next = newNode;
     }
     size_++;
   }
 
   void insert(const_iterator it, const T& value) {
-    Node* new_node =
-        std::allocator_traits<node_alloc_>::allocate(node_alloc_, 1);
+    Node* newNode = std::allocator_traits<NodeAlloc>::allocate(nodeAlloc, 1);
     try {
-      std::allocator_traits<node_alloc_>::construct(node_alloc_, new_node,
-                                                    value);
+      std::allocator_traits<NodeAlloc>::construct(nodeAlloc, newNode, value);
     } catch (...) {
-      std::allocator_traits<node_alloc_>::deallocate(node_alloc_, new_node, 1);
+      std::allocator_traits<NodeAlloc>::deallocate(nodeAlloc, newNode, 1);
       throw;
     }
-    new_node->next = it.node;
-    new_node->prev = it.node->prev;
+    newNode->next = it.node;
+    newNode->prev = it.node->prev;
     const_iterator prev_it = (--it);
     ++it;
-    it.node->prev = new_node;
+    it.node->prev = newNode;
     if (size_ == 0) {
-      it.node->next = new_node;
+      it.node->next = newNode;
     } else {
-      prev_it.node->next = new_node;
+      prev_it.node->next = newNode;
     }
     size_++;
   }
@@ -230,22 +227,22 @@ class List {
     prev_it.node->next = it.node;
     it.node->prev = prev_it.node;
     size_--;
-    std::allocator_traits<node_alloc_>::destroy(node_alloc_, erasing_ptr);
-    std::allocator_traits<node_alloc_>::deallocate(node_alloc_, erasing_ptr, 1);
+    std::allocator_traits<NodeAlloc>::destroy(nodeAlloc, erasing_ptr);
+    std::allocator_traits<NodeAlloc>::deallocate(nodeAlloc, erasing_ptr, 1);
   }
 
   iterator begin() {
-    return iterator(fake_node_.next);
+    return iterator(fakeNode.next);
   }
   const_iterator begin() const {
-    return const_iterator(fake_node_.next);
+    return const_iterator(fakeNode.next);
   }
 
   iterator end() {
-    return iterator((fake_node_.next)->prev);
+    return iterator((fakeNode.next)->prev);
   }
   const_iterator end() const {
-    return const_iterator((fake_node_.next)->prev);
+    return const_iterator((fakeNode.next)->prev);
   }
 
   const_iterator cbegin() const {
@@ -290,7 +287,7 @@ class List {
   }
 
   List(size_t sz, const Alloc& alloc = Alloc())
-      : node_alloc_(alloc) {
+      : nodeAlloc(alloc) {
     size_t i = 0;
     try {
       for (; i < sz; ++i) {
@@ -311,7 +308,7 @@ class List {
   }
 
   List(size_t sz, const T& value, const Alloc& alloc = Alloc())
-      : node_alloc_(alloc),
+      : nodeAlloc(alloc),
         size_(sz) {
     size_t i = 0;
     try {
@@ -327,8 +324,8 @@ class List {
   }
 
   List(const List& other)
-      : node_alloc_(AllocTraits::select_on_container_copy_construction(
-            other.node_alloc_)) {
+      : nodeAlloc(AllocTraits::select_on_container_copy_construction(
+            other.nodeAlloc)) {
     size_t i = 0;
     const_iterator it = other.begin();
     try {
@@ -345,18 +342,17 @@ class List {
   }
 
   void swap(List& other) {
-    std::swap(other.fake_node_, fake_node_);
+    std::swap(other.fakeNode, fakeNode);
     std::swap(other.size_, size_);
-    std::swap(node_alloc_, other.node_alloc_);
-    fake_node_.next->prev = fake_node_.prev->next = &fake_node_;
-    other.fake_node_.next->prev = other.fake_node_.prev->next =
-        &other.fake_node_;
+    std::swap(nodeAlloc, other.nodeAlloc);
+    fakeNode.next->prev = fakeNode.prev->next = &fakeNode;
+    other.fakeNode.next->prev = other.fakeNode.prev->next = &other.fakeNode;
   }
 
   List& operator=(const List& other) {
     List copy(AllocTraits::propagate_on_container_copy_assignment::value
-                  ? other.node_alloc_
-                  : node_alloc_);
+                  ? other.nodeAlloc
+                  : nodeAlloc);
     const_iterator it = other.begin();
     try {
       while (it != other.end()) {
