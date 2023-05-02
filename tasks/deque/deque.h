@@ -34,7 +34,7 @@ class Deque {
     first_index_ = -1;
   }
 
-  void realloc(T** newchain, int shift=0) {
+  void realloc(T** newchain, int shift = 0) {
     size_t i = 0;
     try {
       for (; i < chain_size_ * 2; ++i) {
@@ -70,7 +70,7 @@ class Deque {
     chain_ = newchain;
     size_ = 1;
     first_index_ = 0;
-    chain_size_ = 1; 
+    chain_size_ = 1;
   }
 
  public:
@@ -381,7 +381,7 @@ void Deque<T>::push_back(const T& value) {
   if (size_ == 0) {
     try {
       null_alloc(value);
-    } catch(...) {
+    } catch (...) {
       throw;
     }
     return;
@@ -390,7 +390,7 @@ void Deque<T>::push_back(const T& value) {
     T** newchain = new T*[chain_size_ * 2];
     try {
       realloc(newchain);
-    } catch(...) {
+    } catch (...) {
       throw;
     }
     try {
@@ -425,7 +425,7 @@ void Deque<T>::push_front(const T& value) {
   if (size_ == 0) {
     try {
       null_alloc(value);
-    } catch(...) {
+    } catch (...) {
       throw;
     }
     return;
@@ -434,7 +434,7 @@ void Deque<T>::push_front(const T& value) {
     T** newchain = new T*[chain_size_ * 2];
     try {
       realloc(newchain, chain_size_);
-    } catch(...) {
+    } catch (...) {
       throw;
     }
     try {
