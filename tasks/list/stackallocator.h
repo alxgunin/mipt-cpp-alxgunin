@@ -346,7 +346,8 @@ class List {
     std::swap(other.size_, size_);
     std::swap(node_alloc_, other.node_alloc_);
     fake_node_.next->prev = fake_node_.prev->next = &fake_node_;
-    other.fake_node_.next->prev = other.fake_node_.prev->next = &other.fake_node_;
+    other.fake_node_.next->prev = other.fake_node_.prev->next =
+        &other.fake_node_;
   }
 
   List& operator=(const List& other) {
