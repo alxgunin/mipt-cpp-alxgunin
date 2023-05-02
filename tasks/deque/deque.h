@@ -34,6 +34,45 @@ class Deque {
     first_index_ = -1;
   }
 
+  void realloc(T** newchain, int shift=0) {
+    size_t i = 0;
+    try {
+      for (; i < chain_size_ * 2; ++i) {
+        newchain[i] = reinterpret_cast<T*>(new char[bucket_size * sizeof(T)]);
+      }
+    } catch (...) {
+      for (size_t j = 0; j < i; ++j) {
+        delete[] reinterpret_cast<char*>(newchain[j]);
+      }
+      delete[] newchain;
+      throw;
+    }
+    for (size_t j = 0; j < chain_size_; ++j) {
+      newchain[j + shift] = chain_[j];
+    }
+  }
+
+  void null_alloc(const T& value) {
+    T** newchain = new T*[1];
+    try {
+      newchain[0] = reinterpret_cast<T*>(new char[bucket_size * sizeof(T)]);
+    } catch (...) {
+      delete[] newchain;
+      throw;
+    }
+    try {
+      new (newchain[0]) T(value);
+    } catch (...) {
+      delete[] reinterpret_cast<char*>(newchain[0]);
+      delete[] newchain;
+      throw;
+    }
+    chain_ = newchain;
+    size_ = 1;
+    first_index_ = 0;
+    chain_size_ = 1; 
+  }
+
  public:
   void swap(Deque& another);
 
@@ -245,8 +284,7 @@ Deque<T>::Deque(size_t size)
   size_t i = 0;
   try {
     for (; i < chain_size_; ++i) {
-      chain_[i] =
-          reinterpret_cast<T*>(new char[bucket_size * sizeof(T)]);  // ASK
+      chain_[i] = new T[bucket_size];
     }
   } catch (...) {
     for (size_t j = 0; j < i; ++j) {
@@ -341,42 +379,19 @@ const T& Deque<T>::at(size_t index) const {
 template <typename T>
 void Deque<T>::push_back(const T& value) {
   if (size_ == 0) {
-    T** newchain = new T*[1];
     try {
-      newchain[0] = reinterpret_cast<T*>(new char[bucket_size * sizeof(T)]);
-    } catch (...) {
-      delete[] newchain;
+      null_alloc(value);
+    } catch(...) {
       throw;
     }
-    try {
-      new (newchain[0]) T(value);
-    } catch (...) {
-      delete[] reinterpret_cast<char*>(newchain[0]);
-      delete[] newchain;
-      throw;
-    }
-    chain_ = newchain;
-    size_ = 1;
-    first_index_ = 0;
-    chain_size_ = 1;
     return;
   }
   if (first_index_ + size_ == chain_size_ * bucket_size) {
     T** newchain = new T*[chain_size_ * 2];
-    size_t i = 0;
     try {
-      for (; i < chain_size_ * 2; ++i) {
-        newchain[i] = reinterpret_cast<T*>(new char[bucket_size * sizeof(T)]);
-      }
-    } catch (...) {
-      for (size_t j = 0; j < i; ++j) {
-        delete[] reinterpret_cast<char*>(newchain[j]);
-      }
-      delete[] newchain;
+      realloc(newchain);
+    } catch(...) {
       throw;
-    }
-    for (size_t j = 0; j < chain_size_; ++j) {
-      newchain[j] = chain_[j];
     }
     try {
       new (newchain[get_num(first_index_ + size_)] +
@@ -408,42 +423,19 @@ void Deque<T>::pop_back() {
 template <typename T>
 void Deque<T>::push_front(const T& value) {
   if (size_ == 0) {
-    T** newchain = new T*[1];
     try {
-      newchain[0] = reinterpret_cast<T*>(new char[bucket_size * sizeof(T)]);
-    } catch (...) {
-      delete[] newchain;
+      null_alloc(value);
+    } catch(...) {
       throw;
     }
-    try {
-      new (newchain[0]) T(value);
-    } catch (...) {
-      delete[] reinterpret_cast<char*>(newchain[0]);
-      delete[] newchain;
-      throw;
-    }
-    chain_ = newchain;
-    size_ = 1;
-    first_index_ = 0;
-    chain_size_ = 1;
     return;
   }
   if (first_index_ == 0) {
     T** newchain = new T*[chain_size_ * 2];
-    size_t i = 0;
     try {
-      for (; i < chain_size_ * 2; ++i) {
-        newchain[i] = reinterpret_cast<T*>(new char[bucket_size * sizeof(T)]);
-      }
-    } catch (...) {
-      for (size_t j = 0; j < i; ++j) {
-        delete[] reinterpret_cast<char*>(newchain[j]);
-      }
-      delete[] newchain;
+      realloc(newchain, chain_size_);
+    } catch(...) {
       throw;
-    }
-    for (size_t j = 0; j < chain_size_; ++j) {
-      newchain[j + chain_size_] = chain_[j];
     }
     try {
       new (newchain[chain_size_ - 1] + bucket_size - 1) T(value);
@@ -515,14 +507,6 @@ Deque<T>::common_iterator<is_const>::operator+=(difference_type delta) {
   return *this;
 }
 
-// template<typename T>
-// template<bool is_const>
-// typename Deque<T>::common_iterator<is_const>
-// operator+(Deque<T>::common_iterator<is_const> copy, difference_type delta) {
-//   copy += delta;
-//   return copy;
-// }
-
 template <typename T>
 template <bool is_const>
 typename Deque<T>::template common_iterator<is_const>&
@@ -530,14 +514,6 @@ Deque<T>::common_iterator<is_const>::operator-=(difference_type delta) {
   pos_ -= delta;
   return *this;
 }
-
-// template<typename T>
-// template<bool is_const>
-// typename Deque<T>::common_iterator<is_const>
-// operator-(Deque<T>::common_iterator<is_const> copy, difference_type delta) {
-//   copy -= delta;
-//   return copy;
-// }
 
 template <typename T>
 void Deque<T>::insert(Deque<T>::iterator it, T value) {
