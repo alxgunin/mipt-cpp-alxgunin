@@ -226,7 +226,7 @@ class List {
     ++it;
     prev_it.node->next = it.node;
     it.node->prev = prev_it.node;
-    size_--;
+    --size_;
     std::allocator_traits<NodeAlloc>::destroy(node_alloc_, erasing_ptr);
     std::allocator_traits<NodeAlloc>::deallocate(node_alloc_, erasing_ptr, 1);
   }
