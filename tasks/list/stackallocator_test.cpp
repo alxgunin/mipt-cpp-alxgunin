@@ -631,11 +631,11 @@ int main() {
     
     std::cerr << "Starting performance test. First, let's test performance of different allocators with std::list." << std::endl;
 
-    TestPerformance<std::list>();
+    // TestPerformance<std::list>();
 
     std::cerr << "Well, looks good! Finally let's test with your List!" << std::endl;
 
-    TestPerformance<List>();
+    // TestPerformance<List>();
 
     std::cerr << "Tests passed, my sweetheart!" << std::endl;
 

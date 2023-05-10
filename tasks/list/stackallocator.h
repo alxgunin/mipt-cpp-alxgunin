@@ -216,7 +216,7 @@ class List {
     } else {
       prev_it.node->next = new_node;
     }
-    size_++;
+    ++size_;
   }
 
   void erase(const_iterator it) {
