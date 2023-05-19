@@ -42,7 +42,7 @@ class StackAllocator {
   ~StackAllocator() = default;
   template <typename U>
   StackAllocator& operator=(const StackAllocator<U, N>& other) {
-    this->storage = other.storage;
+    pt_arr = other.pt_arr;
     return *this;
   }
   StackAllocator(const StackAllocator& other) = default;
@@ -112,7 +112,7 @@ class List {
     return static_cast<Alloc>(node_alloc_);
   }
 
-  List(Alloc alloc = Alloc())
+  List(const Alloc& alloc = Alloc())
       : size_(0),
         node_alloc_(alloc) {
   }
@@ -181,6 +181,7 @@ class List {
     Node* new_node = std::allocator_traits<NodeAlloc>::allocate(node_alloc_, 1);
     try {
       std::allocator_traits<NodeAlloc>::construct(node_alloc_, new_node);
+
     } catch (...) {
       std::allocator_traits<NodeAlloc>::deallocate(node_alloc_, new_node, 1);
       throw;
@@ -313,7 +314,7 @@ class List {
     size_t i = 0;
     try {
       for (; i < size_; ++i) {
-        insert(begin(), value);
+        insert(begin(), value, false);
       }
     } catch (...) {
       for (size_t j = 0; j < i; ++j) {
