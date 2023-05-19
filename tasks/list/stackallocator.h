@@ -177,15 +177,7 @@ class List {
   typedef std::reverse_iterator<iterator> reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-  void insert(const_iterator it) {
-    Node* new_node = std::allocator_traits<NodeAlloc>::allocate(node_alloc_, 1);
-    try {
-      std::allocator_traits<NodeAlloc>::construct(node_alloc_, new_node);
-
-    } catch (...) {
-      std::allocator_traits<NodeAlloc>::deallocate(node_alloc_, new_node, 1);
-      throw;
-    }
+  void replace_pointers(Node* new_node, const_iterator it) {
     new_node->next = it.node;
     new_node->prev = it.node->prev;
     const_iterator prev_it = (--it);
@@ -199,6 +191,19 @@ class List {
     size_++;
   }
 
+
+  void insert(const_iterator it) {
+    Node* new_node = std::allocator_traits<NodeAlloc>::allocate(node_alloc_, 1);
+    try {
+      std::allocator_traits<NodeAlloc>::construct(node_alloc_, new_node);
+
+    } catch (...) {
+      std::allocator_traits<NodeAlloc>::deallocate(node_alloc_, new_node, 1);
+      throw;
+    }
+    replace_pointers(new_node, it);
+  }
+
   void insert(const_iterator it, const T& value) {
     Node* new_node = std::allocator_traits<NodeAlloc>::allocate(node_alloc_, 1);
     try {
@@ -207,17 +212,7 @@ class List {
       std::allocator_traits<NodeAlloc>::deallocate(node_alloc_, new_node, 1);
       throw;
     }
-    new_node->next = it.node;
-    new_node->prev = it.node->prev;
-    const_iterator prev_it = (--it);
-    ++it;
-    it.node->prev = new_node;
-    if (size_ == 0) {
-      it.node->next = new_node;
-    } else {
-      prev_it.node->next = new_node;
-    }
-    ++size_;
+    replace_pointers(new_node, it);
   }
 
   void erase(const_iterator it) {
