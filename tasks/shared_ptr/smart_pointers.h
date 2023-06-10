@@ -28,13 +28,19 @@ struct BaseControlBlockRegular : BaseControlBlock {
   U* object;
   Deleter deleter;
   Alloc alloc;
+  BaseControlBlockRegular(int shared_count, int weak_count, U* pt)
+      : BaseControlBlock(weak_count, shared_count),
+        object(pt) {
+  }
+
   BaseControlBlockRegular(int shared_count, int weak_count, U* pt,
-                          Deleter deleter = Deleter(), Alloc alloc = Alloc())
+                          const Deleter& deleter, const Alloc& alloc)
       : BaseControlBlock(weak_count, shared_count),
         object(pt),
         deleter(deleter),
         alloc(alloc) {
   }
+
   virtual void useDeleter() final {
     deleter(object);
   }
@@ -43,7 +49,6 @@ struct BaseControlBlockRegular : BaseControlBlock {
   using AllocTraits = std::allocator_traits<AllocBaseControlBlock>;
   AllocBaseControlBlock newAlloc = alloc;
   virtual void dealloc() final {
-    // AllocTraits::destroy(newAlloc, this);
     AllocTraits::deallocate(newAlloc, this, 1);
   }
   ~BaseControlBlockRegular() = default;
@@ -74,12 +79,11 @@ struct BaseControlBlockMakeShared : BaseControlBlock {
   using AllocTraits = std::allocator_traits<AllocBaseControlBlock>;
   AllocBaseControlBlock newAlloc = alloc;
   virtual void dealloc() final {
-    // AllocTraits::destroy(newAlloc, this);
     AllocTraits::deallocate(newAlloc, this, 1);
   }
   ~BaseControlBlockMakeShared() = default;
 };
-}  // namespace blocks
+}
 
 template <typename T>
 class SharedPtr {
@@ -112,6 +116,22 @@ class SharedPtr {
     add();
   }
 
+  void destructor() {
+    if (cb == nullptr)
+      return;
+    cb->shared_count--;
+    if (cb->shared_count == 0) {
+      cb->useDeleter();
+      if (cb->weak_count == 0) {
+        cb->dealloc();
+      }
+    }
+  } 
+
+  SharedPtr(blocks::BaseControlBlock* cb)
+      : cb(cb) {
+  }
+
  public:
   void swap(SharedPtr& other) {
     std::swap(ptr, other.ptr);
@@ -120,53 +140,8 @@ class SharedPtr {
 
   SharedPtr() = default;
 
-  SharedPtr(T* ptr)
-      : ptr(ptr),
-        cb(new blocks::BaseControlBlockRegular<T>(1, 0, ptr)) {
-    update_wptr();
-  }
-
-  template <typename U>
-  SharedPtr(U* ptr)
-      : ptr(static_cast<T*>(ptr)),
-        cb(new blocks::BaseControlBlockRegular<U>(1, 0, ptr)) {
-    update_wptr();
-  }
-
-  template <typename Deleter>
-  SharedPtr(T* ptr, Deleter deleter)
-      : ptr(ptr),
-        cb(new blocks::BaseControlBlockRegular<T, Deleter>(1, 0, ptr,
-                                                           deleter)) {
-    update_wptr();
-  }
-
-  template <typename U, typename Deleter>
-  SharedPtr(U* ptr, Deleter deleter)
-      : ptr(static_cast<T*>(ptr)),
-        cb(new blocks::BaseControlBlockRegular<U, Deleter>(1, 0, ptr,
-                                                           deleter)) {
-    update_wptr();
-  }
-
-  template <typename Deleter, typename Alloc>
-  SharedPtr(T* ptr, Deleter deleter, Alloc alloc)
-      : ptr(ptr) {
-    using AllocBaseControlBlock =
-        typename std::allocator_traits<Alloc>::template rebind_alloc<
-            blocks::BaseControlBlockRegular<T, Deleter, Alloc>>;
-    using AllocTraits = std::allocator_traits<AllocBaseControlBlock>;
-    AllocBaseControlBlock newAlloc = alloc;
-    cb = AllocTraits::allocate(newAlloc, 1);
-    // AllocTraits::construct(newAlloc, cb, blocks::BaseControlBlockRegular<T,
-    // Deleter, Alloc>(1, 0, ptr, deleter, alloc));
-    new (cb) blocks::BaseControlBlockRegular<T, Deleter, Alloc>(1, 0, ptr,
-                                                                deleter, alloc);
-    update_wptr();
-  }
-
-  template <typename U, typename Deleter, typename Alloc>
-  SharedPtr(U* ptr, Deleter deleter, Alloc alloc)
+  template <typename U = T, typename Deleter = std::default_delete<U>, typename Alloc = std::allocator<U>>
+  SharedPtr(U* ptr, const Deleter& deleter, const Alloc& alloc)
       : ptr(static_cast<T*>(ptr)) {
     using AllocBaseControlBlock =
         typename std::allocator_traits<Alloc>::template rebind_alloc<
@@ -183,9 +158,7 @@ class SharedPtr {
   SharedPtr(const SharedPtr& other)
       : ptr(other.ptr),
         cb(other.cb) {
-    // std::cerr << "aboba\n";
     add();
-    // std::cerr << cb->shared_count << ' ' << cb->weak_count << '\n';
   }
 
   template <typename U>
@@ -238,24 +211,6 @@ class SharedPtr {
     return *this;
   }
 
-  SharedPtr(blocks::BaseControlBlock* cb)
-      : cb(cb) {
-  }
-
-  void destructor() {
-    if (cb == nullptr)
-      return;
-    cb->shared_count--;
-    if (cb->shared_count == 0) {
-      cb->useDeleter();
-      // std::cerr << "we are here! 2\n";
-      if (cb->weak_count == 0) {
-        cb->dealloc();
-        // std::cerr << "we are here! 3\n";
-      }
-    }
-  }
-
   ~SharedPtr() {
     destructor();
   }
@@ -264,24 +219,13 @@ class SharedPtr {
     return cb->shared_count;
   }
 
-  void reset(T* pt = nullptr) {
-    destructor();
-    cb = nullptr;
-    ptr = nullptr;
-    if (pt) {
-      ptr = pt;
-      cb = new blocks::BaseControlBlockRegular<T>(1, 0, pt);
-    }
-  }
-
-  template <typename U>
+  template <typename U = T>
   void reset(U* pt = nullptr) {
-    destructor();
+    destructor(); 
     cb = nullptr;
     ptr = nullptr;
     if (pt) {
-      ptr = pt;
-      cb = new blocks::BaseControlBlockRegular<U>(1, 0, pt);
+      *this = SharedPtr<U>(pt);
     }
   }
 
@@ -332,8 +276,6 @@ class WeakPtr {
   WeakPtr(const SharedPtr<T>& other)
       : ptr(other.ptr),
         cb(other.cb) {
-    // std::cerr << "amogus\n";
-    // std::cerr << cb->shared_count << '\n';
     add();
   }
 
@@ -358,7 +300,6 @@ class WeakPtr {
   }
 
   WeakPtr& operator=(const WeakPtr& other) {
-    // std::cerr << "aboba1";
     WeakPtr copy = other;
     swap(copy);
     return *this;
@@ -366,7 +307,6 @@ class WeakPtr {
 
   template <typename U>
   WeakPtr& operator=(WeakPtr<U> other) {
-    // std::cerr << "aboba1";
     WeakPtr copy = other;
     swap(copy);
     return *this;
@@ -390,18 +330,13 @@ class WeakPtr {
   }
 
   WeakPtr& operator=(WeakPtr&& other) {
-    // std::cerr << "aboba3\n";
-    // std::cerr << cb->weak_count << '\n';
     WeakPtr copy = std::move(other);
-    // std::cerr << copy.cb->weak_count << '\n';
     swap(copy);
-    // std::cerr << cb->weak_count << '\n';
     return *this;
   }
 
   template <typename U>
   WeakPtr& operator=(WeakPtr<U>&& other) {
-    // std::cerr << "aboba4";
     WeakPtr copy = std::move(other);
     swap(copy);
     return *this;
@@ -418,16 +353,10 @@ class WeakPtr {
   }
 
   ~WeakPtr() {
-    // std::cout << "Hello!\n";
     if (cb == nullptr)
       return;
     cb->weak_count--;
-    // std::cout << cb->shared_count << ' ' << cb->weak_count << '\n';
-    // std::cerr << "goodbye3!\n";
     if (cb->weak_count == 0 && cb->shared_count == 0) {
-      // std::cout << "Hello!\n";
-
-      // std::cerr << "goodbye!\n";
       cb->dealloc();
     }
   }
@@ -456,7 +385,6 @@ SharedPtr<T> makeShared(Args&&... args) {
   blocks::BaseControlBlockMakeShared<T>* cb =
       new blocks::BaseControlBlockMakeShared<T>(1, 0, std::allocator<T>(),
                                                 std::forward<Args>(args)...);
-  // std::cerr << "here: " << cb->shared_count << '\n';
   return SharedPtr<T>(static_cast<blocks::BaseControlBlock*>(cb));
 }
 
