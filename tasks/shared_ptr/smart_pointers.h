@@ -83,7 +83,7 @@ struct BaseControlBlockMakeShared : BaseControlBlock {
   }
   ~BaseControlBlockMakeShared() = default;
 };
-}
+}  // namespace blocks
 
 template <typename T>
 class SharedPtr {
@@ -126,7 +126,7 @@ class SharedPtr {
         cb->dealloc();
       }
     }
-  } 
+  }
 
   SharedPtr(blocks::BaseControlBlock* cb)
       : cb(cb) {
@@ -140,7 +140,8 @@ class SharedPtr {
 
   SharedPtr() = default;
 
-  template <typename U = T, typename Deleter = std::default_delete<U>, typename Alloc = std::allocator<U>>
+  template <typename U = T, typename Deleter = std::default_delete<U>,
+            typename Alloc = std::allocator<U>>
   SharedPtr(U* ptr, const Deleter& deleter, const Alloc& alloc)
       : ptr(static_cast<T*>(ptr)) {
     using AllocBaseControlBlock =
@@ -221,7 +222,7 @@ class SharedPtr {
 
   template <typename U = T>
   void reset(U* pt = nullptr) {
-    destructor(); 
+    destructor();
     cb = nullptr;
     ptr = nullptr;
     if (pt) {
